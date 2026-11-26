@@ -88,255 +88,78 @@ def runout(deck):
 
     return runout_cards
 
-def make_hands(hand1, hand2, board):
+def score_hand(five_cards):
     """
-    turns 7 cards from run out and starting hand and makes combinations for 5 card hands
+    Scores five (value, suit) cards as a tuple: (hand rank, tiebreak values...).
+    A bigger tuple is a better hand, so two scores can be compared with > and <.
     """
+    values = sorted([card[0] for card in five_cards], reverse=True)
 
-    hand_one_cards = [hand1[0], hand1[1]] + list(board)
-    hand_two_cards = [hand2[0], hand2[1]] + list(board)
-
-    hand_one_combinations = list(itertools.combinations(hand_one_cards, 5))
-    hand_two_combinations = list(itertools.combinations(hand_two_cards, 5))
-
-    return hand_one_combinations, hand_two_combinations
-        
-def get_rank_counts(hand):
-    """
-    Turns 5 card hand into counts to make hand_classification easier
-    """
     counts = {}
-    for card in hand:
-        rank = card[0]
-        if rank in counts:
-            counts[rank] += 1
+    for value in values:
+        counts[value] = counts.get(value, 0) + 1
+
+    # Five different ranks: the only possible hands are straights, flushes and high card.
+    if len(counts) == 5:
+        flush = len({card[1] for card in five_cards}) == 1
+
+        straight_high = 0
+        if values[0] - values[4] == 4:
+            straight_high = values[0]
+        elif values == [14, 5, 4, 3, 2]:
+            straight_high = 5  # ace-low straight: the ace counts as 1
+
+        if straight_high and flush:
+            if straight_high == 14:
+                return (hand_hierarchy["Royal Flush"], 14)
+            return (hand_hierarchy["Straight Flush"], straight_high)
+        elif flush:
+            return (hand_hierarchy["Flush"],) + tuple(values)
+        elif straight_high:
+            return (hand_hierarchy["Straight"], straight_high)
         else:
-            counts[rank] = 1
-    return counts
+            return (hand_hierarchy["High Card"],) + tuple(values)
 
-def is_flush(hand):
-    """
-    Tests whether a hand is a flush
-    """
-    first_suit = hand[0][1]
-    for i in hand:
-        if i[1] != first_suit:
-            return False
-    return True
-        
-def is_straight(hand):
-    """
-    Tests whether a hand is a straight
-    """
-    numbered_hand = []
-    for i in hand:
-        numbered_hand.append(rank_values[i[0]])
+    # A repeated rank: a flush or straight is impossible (one deck has no duplicate cards).
+    # Order ranks by how often they appear; values were inserted high to low and sorting is
+    # stable, so equal counts stay high to low. Example: K,K,4,4,9 -> (K, 4, 9)
+    ordered = tuple(sorted(counts, key=counts.get, reverse=True))
+    top_count = counts[ordered[0]]
 
-    numbered_hand.sort()
-
-    if numbered_hand == [2, 3, 4, 5, 14]:
-        return True
-    for i in range(len(numbered_hand)-1):
-        if numbered_hand[i] + 1 != numbered_hand[i + 1]:
-            return False
-    return True
-
-
-def hand_classification(hand):
-    counts = list(get_rank_counts(hand).values())
-    flush = is_flush(hand)
-    straight = is_straight(hand)
-    if straight and flush:
-        numbered_hand = []
-        for card in hand:
-            numbered_hand.append(rank_values[card[0]])
-        numbered_hand.sort()
-        if numbered_hand == [10,11,12,13,14]:
-            hand_type = "Royal Flush"
-        else:
-            hand_type = "Straight Flush"
-    elif 4 in counts:
-        hand_type = "Four of a Kind"
-    elif 3 in counts and 2 in counts:
-        hand_type = "Full House"
-    elif flush:
-        hand_type = "Flush"
-    elif straight:
-        hand_type = "Straight"
-    elif 3 in counts:
-        hand_type = "Three of a Kind"
-    elif counts.count(2) == 2:
-        hand_type = "Two Pair"
-    elif 2 in counts:
-        hand_type = "Pair"
+    if len(counts) == 2:
+        if top_count == 4:
+            return (hand_hierarchy["Four of a Kind"],) + ordered
+        return (hand_hierarchy["Full House"],) + ordered
+    elif len(counts) == 3:
+        if top_count == 3:
+            return (hand_hierarchy["Three of a Kind"],) + ordered
+        return (hand_hierarchy["Two Pair"],) + ordered
     else:
-        hand_type = "High Card"
-    return hand_type
+        return (hand_hierarchy["Pair"],) + ordered
 
-def get_tiebreak_value(five_card_hand, classification):
+def best_score(seven_cards):
     """
-    Helper function for get best hand to break ties when hand classification is the same
+    Returns the best score among the 21 five-card combinations of seven cards
     """
-    counts = get_rank_counts(five_card_hand)
+    return max(score_hand(five_cards) for five_cards in itertools.combinations(seven_cards, 5))
 
-    numeric_counts = {}
-
-    for rank in counts:
-        numeric_counts[rank_values[rank]] = counts[rank]
-
-    if classification == "High Card" or classification == "Flush":
-        values = sorted(numeric_counts.keys(), reverse=True)
-        return tuple(values)
-
-    elif classification == "Pair":
-        pair_rank = 0
-        kickers = []
-
-        for rank in numeric_counts:
-            if numeric_counts[rank] == 2:
-                pair_rank = rank
-            else:
-                kickers.append(rank)
-
-        kickers.sort(reverse=True)
-
-        return (pair_rank,) + tuple(kickers)
-
-    elif classification == "Two Pair":
-        pairs = []
-        kicker = 0
-
-        for rank in numeric_counts:
-            if numeric_counts[rank] == 2:
-                pairs.append(rank)
-            else:
-                kicker = rank
-
-        pairs.sort(reverse=True)
-
-        return (pairs[0], pairs[1], kicker)
-
-    elif classification == "Three of a Kind":
-        triple_rank = 0
-        kickers = []
-
-        for rank in numeric_counts:
-            if numeric_counts[rank] == 3:
-                triple_rank = rank
-            else:
-                kickers.append(rank)
-
-        kickers.sort(reverse=True)
-
-        return (triple_rank,) + tuple(kickers)
-
-    elif classification == "Straight" or classification == "Straight Flush":
-        values = sorted(numeric_counts.keys())
-
-        if values == [2, 3, 4, 5, 14]:
-            return (5,)
-
-        return (max(values),)
-
-    elif classification == "Full House":
-        triple_rank = 0
-        pair_rank = 0
-
-        for rank in numeric_counts:
-            if numeric_counts[rank] == 3:
-                triple_rank = rank
-            elif numeric_counts[rank] == 2:
-                pair_rank = rank
-
-        return (triple_rank, pair_rank)
-
-    elif classification == "Four of a Kind":
-        four_rank = 0
-        kicker = 0
-
-        for rank in numeric_counts:
-            if numeric_counts[rank] == 4:
-                four_rank = rank
-            else:
-                kicker = rank
-
-        return (four_rank, kicker)
-
-    elif classification == "Royal Flush":
-        return (14,)
-
-def best_hand(hand_combinations, hand_classifications):
+def to_numeric(cards):
     """
-    Takes hand classifications and narrows it down to a list of best hand
+    Converts ("ACE", "SPADES") style cards to (14, "SPADES")
     """
-    result_list = []
-
-    for classification in hand_classifications:
-        result_list.append(hand_hierarchy[classification])
-
-    highest_rank = max(result_list)
-
-    best_hands = []
-
-    for i in range(len(result_list)):
-        if result_list[i] == highest_rank:
-            best_hands.append((
-            hand_combinations[i],
-            hand_classifications[i]
-            ))
-
-    if len(best_hands) == 1:
-        return best_hands[0]
-    else:
-        for hand in best_hands:
-            best_hand = best_hands[0]
-    best_value = get_tiebreak_value(
-        best_hand[0],
-        best_hand[1]
-    )
-
-    for hand, classification in best_hands[1:]:
-        current_value = get_tiebreak_value(
-            hand,
-            classification
-        )
-
-        if current_value > best_value:
-            best_hand = (hand, classification)
-            best_value = current_value
-
-    return best_hand
+    return [(rank_values[rank], suit) for rank, suit in cards]
 
 def get_board_winner(hand1, hand2, board):
-    hand1_combinations, hand2_combinations = make_hands(hand1, hand2, board)
-    hand1_classifications = []
-    for hand in hand1_combinations:
-        hand1_classifications.append(hand_classification(hand))
+    numeric_board = to_numeric(board)
+    hand1_score = best_score(to_numeric(hand1) + numeric_board)
+    hand2_score = best_score(to_numeric(hand2) + numeric_board)
 
-    hand2_classifications = []
-    for hand in hand2_combinations:
-        hand2_classifications.append(hand_classification(hand))
-
-    hand1_best = best_hand(hand1_combinations, hand1_classifications)
-    hand2_best = best_hand(hand2_combinations, hand2_classifications)
-
-    hand1_value = hand_hierarchy[hand1_best[1]]
-    hand2_value = hand_hierarchy[hand2_best[1]]
-
-    if hand1_value > hand2_value:
+    if hand1_score > hand2_score:
         return "Hand 1"
-    elif hand1_value < hand2_value:
+    elif hand1_score < hand2_score:
         return "Hand 2"
     else:
-        hand1_tiebreak_value = get_tiebreak_value(*hand1_best)
-        hand2_tiebreak_value = get_tiebreak_value(*hand2_best)
-
-        if hand1_tiebreak_value > hand2_tiebreak_value:
-            return "Hand 1"
-        elif hand1_tiebreak_value < hand2_tiebreak_value:
-            return "Hand 2"
-        else:
-            return "Tie"
+        return "Tie"
 
 def run_once(deck, hand1, hand2):
     """
