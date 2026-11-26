@@ -80,11 +80,10 @@ def remove_starting_hand(hand1, hand2):
 
     return deck
 
-def runout(hand1, hand2):
+def runout(deck):
     """
-    Gets a sample of 5 random cards to act as a run out
+    Gets a sample of 5 random cards from the remaining deck to act as a run out
     """
-    deck = remove_starting_hand(hand1, hand2)
     runout_cards = random.sample(deck, 5)
 
     return runout_cards
@@ -145,26 +144,13 @@ def is_straight(hand):
 
 def hand_classification(hand):
     counts = list(get_rank_counts(hand).values())
-    rank_values = {
-    "TWO": 2,
-    "THREE": 3,
-    "FOUR": 4,
-    "FIVE": 5,
-    "SIX": 6,
-    "SEVEN": 7,
-    "EIGHT": 8,
-    "NINE": 9,
-    "TEN": 10,
-    "JACK": 11,
-    "QUEEN": 12,
-    "KING": 13,
-    "ACE": 14
-    }
-    numbered_hand = []
-    for card in hand:
-        numbered_hand.append(rank_values[card[0]])
-    numbered_hand.sort()
-    if is_straight(hand) and is_flush(hand):
+    flush = is_flush(hand)
+    straight = is_straight(hand)
+    if straight and flush:
+        numbered_hand = []
+        for card in hand:
+            numbered_hand.append(rank_values[card[0]])
+        numbered_hand.sort()
         if numbered_hand == [10,11,12,13,14]:
             hand_type = "Royal Flush"
         else:
@@ -173,9 +159,9 @@ def hand_classification(hand):
         hand_type = "Four of a Kind"
     elif 3 in counts and 2 in counts:
         hand_type = "Full House"
-    elif is_flush(hand):
+    elif flush:
         hand_type = "Flush"
-    elif is_straight(hand):
+    elif straight:
         hand_type = "Straight"
     elif 3 in counts:
         hand_type = "Three of a Kind"
@@ -352,11 +338,11 @@ def get_board_winner(hand1, hand2, board):
         else:
             return "Tie"
 
-def run_once(hand1, hand2):
+def run_once(deck, hand1, hand2):
     """
     Runs simulation one time
     """
-    board = runout(hand1, hand2)
+    board = runout(deck)
     return get_board_winner(hand1, hand2, board)
 
 def monte_carlo(hand1, hand2, run_amount):
@@ -366,9 +352,10 @@ def monte_carlo(hand1, hand2, run_amount):
     hand1_wins = 0
     hand2_wins = 0
     ties = 0
+    deck = remove_starting_hand(hand1, hand2)  # built once; random.sample never changes it
     i = 1
     while i <= run_amount:
-        result = run_once(hand1, hand2)
+        result = run_once(deck, hand1, hand2)
         if result == "Hand 1":
             hand1_wins+=1
         elif result == "Hand 2":
@@ -428,6 +415,20 @@ def get_int_input(prompt, min_value, max_value=None):
         return value
 
 
+def get_optional_seed(prompt):
+    """
+    Asks for a random seed. Pressing Enter returns None (a normal random run).
+    """
+    while True:
+        text = input(prompt).strip()
+        if text == "":
+            return None
+        try:
+            return int(text)
+        except ValueError:
+            print(f"{RED}Please enter a whole number, or press Enter for a random run.{RESET}")
+
+
 def get_card(position, owner, chosen_cards):
     """
     Asks for one card's rank and suit, re-asking only the part that is invalid.
@@ -475,6 +476,11 @@ def main():
     hand1, hand2 = get_hands()
 
     run_amount = get_int_input("How many times would you like to simulate?: ", 1)
+    seed = get_optional_seed("Random seed (press Enter for a random run): ")
+
+    if seed is not None:
+        random.seed(seed)
+        print(f"Using seed {seed}")
 
     start_time = time.perf_counter()
     hand1_wins, hand2_wins, ties = monte_carlo(hand1, hand2, run_amount)
