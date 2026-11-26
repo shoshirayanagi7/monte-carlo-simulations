@@ -1,3 +1,4 @@
+import os
 import random
 import matplotlib.pyplot as plt
 
@@ -13,83 +14,121 @@ def simulate_dice_rolls():
     """
     Simulates rolling two dice and returns their sum.
     """
-    rollResultOne = dice_value()
-    rollResultTwo = dice_value()
-    diceCombinedValue = rollResultOne + rollResultTwo
-    return diceCombinedValue
+    roll_result_one = dice_value()
+    roll_result_two = dice_value()
+    dice_combined_value = roll_result_one + roll_result_two
+    return dice_combined_value
 
 
-def getMatchCount(target, runAmount):
+def get_match_count(target, run_amount):
     """
     Counts matches and saves the estimated probability after each trial.
     """
-    matchCount = 0
-    estimatedProbabilities = []  # NEW: stores the running estimates
-    i = 1
+    match_count = 0
+    estimated_probabilities = []  # stores the running estimates
 
-    while i <= runAmount:
-        diceCheckValue = simulate_dice_rolls()
+    # i goes 1, 2, ..., run_amount (range stops just before run_amount + 1).
+    for i in range(1, run_amount + 1):
+        dice_check_value = simulate_dice_rolls()
 
-        if diceCheckValue == target:
-            matchCount += 1
+        if dice_check_value == target:
+            match_count += 1
 
         # Save an estimate after EVERY trial, including non-matches.
-        currentProbability = matchCount / i * 100
-        estimatedProbabilities.append(currentProbability)
+        current_probability = match_count / i * 100
+        estimated_probabilities.append(current_probability)
 
-        i += 1
-
-    return matchCount, estimatedProbabilities
+    return match_count, estimated_probabilities
 
 
-def getEstimatedProbability(target, runAmount):
+def get_estimated_probability(target, run_amount):
     """
     Returns the final estimated percentage and the running estimates.
     """
-    matchCount, estimatedProbabilities = getMatchCount(target, runAmount)
-    percentEstimated = matchCount / runAmount * 100
+    match_count, estimated_probabilities = get_match_count(target, run_amount)
+    percent_estimated = match_count / run_amount * 100
 
-    return percentEstimated, estimatedProbabilities
+    return percent_estimated, estimated_probabilities
 
 
-def getTheoreticalProbability(target):
+def get_theoretical_probability(target):
     """
     Calculates the exact probability as a percentage.
     """
-    matchesCount = 0
-    totalCombinations = 0
+    matches_count = 0
+    total_combinations = 0
 
     for d1 in range(1, 7):
         for d2 in range(1, 7):
-            diceTotal = d1 + d2
-            totalCombinations += 1
+            dice_total = d1 + d2
+            total_combinations += 1
 
-            if diceTotal == target:
-                matchesCount += 1
+            if dice_total == target:
+                matches_count += 1
 
-    return matchesCount / totalCombinations * 100
+    return matches_count / total_combinations * 100
 
 
-def plotConvergence(estimatedProbabilities, theoreticalProbability, target):
+def get_int_input(prompt, min_value, max_value=None):
     """
-    Plots the running estimates against the theoretical probability.
+    Keeps asking until the user types a whole number in the allowed range.
     """
-    trialNumbers = range(1, len(estimatedProbabilities) + 1)
+    while True:
+        try:
+            value = int(input(prompt))
+        except ValueError:
+            print("Please enter a whole number.")
+            continue
+
+        if value < min_value or (max_value is not None and value > max_value):
+            if max_value is None:
+                print(f"Please enter a number that is at least {min_value}.")
+            else:
+                print(f"Please enter a number between {min_value} and {max_value}.")
+            continue
+
+        return value
+
+
+def print_error_table(target, theoretical):
+    """
+    Runs a fresh simulation at several sizes and shows how far
+    each estimate is from the theoretical probability.
+    """
+    trial_sizes = [100, 1_000, 10_000, 100_000]
+
+    print()
+    print(f"Error at different simulation sizes (target sum {target}):")
+    print(f"{'Trials':>10} | {'Estimated %':>11} | {'Theoretical %':>13} | {'Absolute error':>14}")
+    print("-" * 58)
+
+    for trials in trial_sizes:
+        estimated, _ = get_estimated_probability(target, trials)
+        absolute_error = abs(estimated - theoretical)
+        print(f"{trials:>10,} | {estimated:>11.2f} | {theoretical:>13.2f} | {absolute_error:>14.2f}")
+
+
+def plot_convergence(estimated_probabilities, theoretical_probability, target):
+    """
+    Plots the running estimates against the theoretical probability
+    and saves the graph to images/dice_convergence.png.
+    """
+    trial_numbers = range(1, len(estimated_probabilities) + 1)
 
     plt.figure(figsize=(10, 6))
 
     plt.plot(
-        trialNumbers,
-        estimatedProbabilities,
+        trial_numbers,
+        estimated_probabilities,
         label="Estimated probability",
         color="royalblue"
     )
 
     plt.axhline(
-        y=theoreticalProbability,
+        y=theoretical_probability,
         color="red",
         linestyle="--",
-        label=f"Theoretical probability: {theoreticalProbability:.2f}%"
+        label=f"Theoretical probability: {theoretical_probability:.2f}%"
     )
 
     plt.xlabel("Number of trials")
@@ -98,29 +137,38 @@ def plotConvergence(estimatedProbabilities, theoreticalProbability, target):
     plt.legend()
     plt.grid(alpha=0.3)
     plt.tight_layout()
+
+    os.makedirs("images", exist_ok=True)
+    save_path = "images/dice_convergence.png"
+    plt.savefig(save_path)
     plt.show()
+    plt.close()
+
+    print()
+    print(f"Convergence plot saved to {save_path}")
 
 
-print("This is a Monte Carlo Dice Simulation")
+def main():
+    print("This is a Monte Carlo Dice Simulation")
 
-target = int(input("Input a number between 2 and 12: "))
+    target = get_int_input("Input a number between 2 and 12: ", 2, 12)
+    run_amount = get_int_input("Input the number of simulations: ", 1)
 
-if 2 <= target <= 12:
-    runAmount = int(input("Input the number of simulations: "))
+    estimated, history = get_estimated_probability(target, run_amount)
+    theoretical = get_theoretical_probability(target)
+    absolute_error = abs(estimated - theoretical)
 
-    if runAmount > 0:
-        estimated, history = getEstimatedProbability(target, runAmount)
-        theoretical = getTheoreticalProbability(target)
+    print(
+        f"We ran {run_amount} simulations to calculate "
+        f"the probability of rolling a sum of {target}"
+    )
+    print(f"The Estimated Probability is {estimated:.2f}%")
+    print(f"The Theoretical Probability is {theoretical:.2f}%")
+    print(f"Absolute error: {absolute_error:.2f} percentage points")
 
-        print(
-            f"We ran {runAmount} simulations to calculate "
-            f"the probability of rolling a sum of {target}"
-        )
-        print(f"The Estimated Probability is {estimated:.2f}%")
-        print(f"The Theoretical Probability is {theoretical:.2f}%")
+    print_error_table(target, theoretical)
+    plot_convergence(history, theoretical, target)
 
-        plotConvergence(history, theoretical, target)
-    else:
-        print("Invalid input, the number of simulations must be positive.")
-else:
-    print("Invalid input, the number must be between 2 and 12.")
+
+if __name__ == "__main__":
+    main()

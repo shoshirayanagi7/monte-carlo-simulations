@@ -25,9 +25,9 @@
 - [x] Calculate estimated probability
 - [x] Calculate theoretical probability
 - [x] Add basic input validation
-- [ ] Show difference/error between estimated and theoretical probability
-- [ ] Test multiple simulation sizes
-- [ ] Add convergence graph
+- [x] Show difference/error between estimated and theoretical probability
+- [x] Test multiple simulation sizes
+- [x] Add convergence graph
 
 ---
 
