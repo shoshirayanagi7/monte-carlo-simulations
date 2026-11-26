@@ -18,5 +18,6 @@ Learning project: Monte Carlo simulations that compare simulated estimates with 
 - `dice_simulation.py` and `card_simulation.py` follow the reference layout: `main()` behind a `__main__` guard, plus `get_int_input()` for input validation that re-asks. The other scripts still run at import time; copy this pattern when updating them.
 - `gamblers_ruin_simulation.py` reads module globals (`run_amount`, `money_start`, …) that are set by the input code at the bottom of the file.
 - `gamblers_ruin_simulation.py` still uses `plt.show()`.
+- `card_simulation.py` asks for an optional seed after the run count (Enter = random). Any optimization must keep the seeded benchmark in `benchmarks/card_simulation_benchmark.md` printing identical counts.
 - In `card_simulation.py`, the exact calculation `theoretical_probability()` loops over all 1,712,304 possible boards and is too slow, so its call is commented out.
 - In `gamblers_ruin_simulation.py`, the theoretical result `start / goal` is valid only for a fair coin.
