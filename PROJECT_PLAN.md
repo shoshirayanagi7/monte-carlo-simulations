@@ -59,7 +59,8 @@
 - [ ] Simulate multiple draws without replacement
 - [x] Calculate theoretical probability
 - [x] Compare simulated and theoretical results
-- [ ] Add visualization
+- [x] Add visualization
+- [ ] Cache exact results (memoization)
 
 ---
 

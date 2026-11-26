@@ -1,7 +1,9 @@
+import os
 import random
 import itertools
 import time
 import math
+import matplotlib.pyplot as plt
 
 RED = "\033[31m"
 RESET = "\033[0m"
@@ -176,9 +178,11 @@ def monte_carlo(hand1, hand2, run_amount):
     hand1_wins = 0
     hand2_wins = 0
     ties = 0
+    hand1_running_percentages = []  # Hand 1's win % after each run, for the convergence plot
     deck = remove_starting_hand(hand1, hand2)  # built once; random.sample never changes it
-    i = 1
-    while i <= run_amount:
+
+    # i goes 1, 2, ..., run_amount (range stops just before run_amount + 1).
+    for i in range(1, run_amount + 1):
         result = run_once(deck, hand1, hand2)
         if result == "Hand 1":
             hand1_wins+=1
@@ -186,8 +190,11 @@ def monte_carlo(hand1, hand2, run_amount):
             hand2_wins +=1
         elif result == "Tie":
             ties+=1
-        i += 1
-    return hand1_wins, hand2_wins, ties
+
+        # Save the running estimate after EVERY run, including losses and ties.
+        hand1_running_percentages.append(hand1_wins / i * 100)
+
+    return hand1_wins, hand2_wins, ties, hand1_running_percentages
 
 def estimated_probability(hand1_wins, hand2_wins, ties, run_amount):
     hand1_percentage = round((hand1_wins/run_amount)*100,2)
@@ -294,6 +301,60 @@ def print_comparison_table(simulated, exact):
         print(f"{label:<8}{simulated_percentage:>13.2f}{exact_percentage:>11.2f}{error:>13.2f}")
 
 
+def short_hand_name(hand):
+    """
+    Turns (("ACE", "SPADES"), ("KING", "SPADES")) into "A♠K♠" for plot titles.
+    """
+    rank_letters = {"ACE": "A", "KING": "K", "QUEEN": "Q", "JACK": "J"}
+    suit_symbols = {"SPADES": "♠", "HEARTS": "♥", "DIAMONDS": "♦", "CLUBS": "♣"}
+
+    name = ""
+    for rank, suit in hand:
+        name += rank_letters.get(rank, str(rank_values[rank])) + suit_symbols[suit]
+    return name
+
+
+def plot_convergence(running_percentages, exact_hand1_percentage, hand1, hand2, show_plot):
+    """
+    Plots Hand 1's running win % (and the exact % if it was calculated)
+    and saves the graph to images/card_convergence.png.
+    """
+    run_numbers = range(1, len(running_percentages) + 1)
+
+    plt.figure(figsize=(10, 6))
+
+    plt.plot(
+        run_numbers,
+        running_percentages,
+        label="Simulated Hand 1 win %",
+        color="royalblue"
+    )
+
+    if exact_hand1_percentage is not None:
+        plt.axhline(
+            y=exact_hand1_percentage,
+            color="red",
+            linestyle="--",
+            label=f"Exact Hand 1 win: {exact_hand1_percentage:.2f}%"
+        )
+
+    plt.xlabel("Number of runs")
+    plt.ylabel("Hand 1 win (%)")
+    plt.title(f"Monte Carlo Convergence: {short_hand_name(hand1)} vs {short_hand_name(hand2)}")
+    plt.legend()
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+
+    os.makedirs("images", exist_ok=True)
+    save_path = "images/card_convergence.png"
+    plt.savefig(save_path)
+    if show_plot:
+        plt.show()
+    plt.close()
+
+    print(f"Convergence plot saved to {save_path}")
+
+
 def get_card(position, owner, chosen_cards):
     """
     Asks for one card's rank and suit, re-asking only the part that is invalid.
@@ -348,7 +409,7 @@ def main():
         print(f"Using seed {seed}")
 
     start_time = time.perf_counter()
-    hand1_wins, hand2_wins, ties = monte_carlo(hand1, hand2, run_amount)
+    hand1_wins, hand2_wins, ties, hand1_running_percentages = monte_carlo(hand1, hand2, run_amount)
     elapsed_seconds = time.perf_counter() - start_time
 
     hand1_percentage, hand2_percentage, ties_percentage = estimated_probability(hand1_wins, hand2_wins, ties, run_amount)
@@ -360,6 +421,7 @@ def main():
     print("Hand 1: " + str(hand1_percentage) + "% Hand 2: " + str(hand2_percentage) + "% Ties: " + str(ties_percentage) + "%")
     print(f"Simulation took {elapsed_seconds:.2f} seconds")
 
+    exact = None  # stays None unless the user asks for exact odds
     if get_yes_no("Calculate exact odds? (takes about a minute) (y/n): "):
         print("Checking every possible board...")
         start_time = time.perf_counter()
@@ -368,6 +430,10 @@ def main():
         print(f"Exact calculation took {exact_seconds:.1f} seconds")
         print()
         print_comparison_table((hand1_percentage, hand2_percentage, ties_percentage), exact)
+
+    exact_hand1_percentage = exact[0] if exact is not None else None
+    show_plot = get_yes_no("Show the convergence plot? (y/n): ")
+    plot_convergence(hand1_running_percentages, exact_hand1_percentage, hand1, hand2, show_plot)
 
 
 if __name__ == "__main__":
