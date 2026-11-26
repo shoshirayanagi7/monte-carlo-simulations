@@ -1,6 +1,7 @@
 import random
 import itertools
 import time
+import math
 
 RED = "\033[31m"
 RESET = "\033[0m"
@@ -195,13 +196,20 @@ def estimated_probability(hand1_wins, hand2_wins, ties, run_amount):
     return hand1_percentage, hand2_percentage, ties_percent 
 
 def theoretical_probability(hand1, hand2):
+    """
+    Checks every possible 5-card board (1,712,304 of them) and returns the exact
+    win/tie percentages. Prints a progress update every 10% because it takes about a minute.
+    """
     deck = remove_starting_hand(hand1, hand2)
+    total_boards = math.comb(len(deck), 5)  # 48 choose 5 = 1,712,304
 
     hand1_wins = 0
     hand2_wins = 0
     ties = 0
+    last_tenth_printed = 0
+    start_time = time.perf_counter()
 
-    for board in itertools.combinations(deck, 5):
+    for board_count, board in enumerate(itertools.combinations(deck, 5), start=1):
         result = get_board_winner(hand1, hand2, board)
         if result == "Hand 1":
             hand1_wins += 1
@@ -209,6 +217,12 @@ def theoretical_probability(hand1, hand2):
             hand2_wins += 1
         if result == "Tie":
             ties += 1
+
+        tenth = board_count * 10 // total_boards  # 0..10: how many tenths are done
+        if tenth > last_tenth_printed:
+            last_tenth_printed = tenth
+            elapsed_seconds = time.perf_counter() - start_time
+            print(f"  {tenth * 10}% done ({board_count:,} of {total_boards:,} boards, {elapsed_seconds:.1f} s)")
 
     theoretical_hand1_percentage = round((hand1_wins/1712304)*100,2)
     theoretical_hand2_percentage = round((hand2_wins/1712304)*100,2)
@@ -250,6 +264,34 @@ def get_optional_seed(prompt):
             return int(text)
         except ValueError:
             print(f"{RED}Please enter a whole number, or press Enter for a random run.{RESET}")
+
+
+def get_yes_no(prompt):
+    """
+    Keeps asking until the user types y or n. Returns True for yes.
+    If there is no more input (for example, piped answers ran out), counts as no.
+    """
+    while True:
+        try:
+            answer = input(prompt).strip().lower()
+        except EOFError:
+            print()
+            return False
+        if answer in ("y", "yes"):
+            return True
+        if answer in ("n", "no"):
+            return False
+        print(f"{RED}Please enter y or n.{RESET}")
+
+
+def print_comparison_table(simulated, exact):
+    """
+    Prints simulated %, exact %, and absolute error side by side.
+    """
+    print(f"{'':<8}{'Simulated %':>13}{'Exact %':>11}{'Abs. error':>13}")
+    for label, simulated_percentage, exact_percentage in zip(["Hand 1", "Hand 2", "Ties"], simulated, exact):
+        error = abs(simulated_percentage - exact_percentage)
+        print(f"{label:<8}{simulated_percentage:>13.2f}{exact_percentage:>11.2f}{error:>13.2f}")
 
 
 def get_card(position, owner, chosen_cards):
@@ -310,7 +352,6 @@ def main():
     elapsed_seconds = time.perf_counter() - start_time
 
     hand1_percentage, hand2_percentage, ties_percentage = estimated_probability(hand1_wins, hand2_wins, ties, run_amount)
-    # mathematical_hand1_percentage, mathematical_hand2_percentage, mathematical_ties_percentage = theoretical_probability(hand1, hand2)
 
     print("After running Hand 1:" + str(hand1) + "and Hand 2:" + str(hand2) + " through " + str(run_amount) + " random runouts,")
     print("Hand 1 won " + str(hand1_wins) + " times")
@@ -318,15 +359,15 @@ def main():
     print("There were " + str(ties) + " ties")
     print("Hand 1: " + str(hand1_percentage) + "% Hand 2: " + str(hand2_percentage) + "% Ties: " + str(ties_percentage) + "%")
     print(f"Simulation took {elapsed_seconds:.2f} seconds")
-    # print(f"Mathematically, Hand 1 should win {mathematical_hand1_percentage}%")
-    # print(f"Hand 2 should win {mathematical_hand2_percentage}%")
-    # print(f"With {mathematical_ties_percentage}% ties")
 
-    """
-    print estimated probability function
-    print theoretical probability function
-    print difference
-    """
+    if get_yes_no("Calculate exact odds? (takes about a minute) (y/n): "):
+        print("Checking every possible board...")
+        start_time = time.perf_counter()
+        exact = theoretical_probability(hand1, hand2)
+        exact_seconds = time.perf_counter() - start_time
+        print(f"Exact calculation took {exact_seconds:.1f} seconds")
+        print()
+        print_comparison_table((hand1_percentage, hand2_percentage, ties_percentage), exact)
 
 
 if __name__ == "__main__":

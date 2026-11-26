@@ -57,8 +57,8 @@
 - [ ] Represent a deck of 52 cards
 - [ ] Simulate one-card draws
 - [ ] Simulate multiple draws without replacement
-- [ ] Calculate theoretical probability
-- [ ] Compare simulated and theoretical results
+- [x] Calculate theoretical probability
+- [x] Compare simulated and theoretical results
 - [ ] Add visualization
 
 ---
