@@ -108,7 +108,25 @@ def print_error_table(target, theoretical):
         print(f"{trials:>10,} | {estimated:>11.2f} | {theoretical:>13.2f} | {absolute_error:>14.2f}")
 
 
-def plot_convergence(estimated_probabilities, theoretical_probability, target):
+def get_yes_no(prompt):
+    """
+    Keeps asking until the user types y or n. Returns True for yes.
+    If there is no more input (for example, piped answers ran out), counts as no.
+    """
+    while True:
+        try:
+            answer = input(prompt).strip().lower()
+        except EOFError:
+            print()
+            return False
+        if answer in ("y", "yes"):
+            return True
+        if answer in ("n", "no"):
+            return False
+        print("Please enter y or n.")
+
+
+def plot_convergence(estimated_probabilities, theoretical_probability, target, show_plot):
     """
     Plots the running estimates against the theoretical probability
     and saves the graph to images/dice_convergence.png.
@@ -141,7 +159,8 @@ def plot_convergence(estimated_probabilities, theoretical_probability, target):
     os.makedirs("images", exist_ok=True)
     save_path = "images/dice_convergence.png"
     plt.savefig(save_path)
-    plt.show()
+    if show_plot:
+        plt.show()
     plt.close()
 
     print()
@@ -167,7 +186,8 @@ def main():
     print(f"Absolute error: {absolute_error:.2f} percentage points")
 
     print_error_table(target, theoretical)
-    plot_convergence(history, theoretical, target)
+    show_plot = get_yes_no("Show the plot? (y/n): ")
+    plot_convergence(history, theoretical, target, show_plot)
 
 
 if __name__ == "__main__":

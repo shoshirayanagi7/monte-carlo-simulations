@@ -50,27 +50,6 @@ def create_deck():
             deck.append(card_tuple)
     return deck
 
-def validate_hand(hand1, hand2):
-    """
-    Makes sure starting hands are possible hands
-    """
-    starting_hands = [hand1, hand2]
-    for hand in starting_hands:
-        if hand[0] == hand[1]:
-            return False
-
-    if hand1[0] in hand2 or hand1[1] in hand2:
-        return False
-
-    for hand in starting_hands:
-        if hand[0][0] not in ranks or hand[1][0] not in ranks:
-            return False
-
-        if hand[0][1] not in suits or hand[1][1] not in suits:
-            return False
-
-    return True
-
 def remove_starting_hand(hand1, hand2):
     """
     removes starting hand from deck so they aren't a part of the draw when the simulation is running
@@ -291,27 +270,33 @@ def get_yes_no(prompt):
         print(f"{RED}Please enter y or n.{RESET}")
 
 
-def print_comparison_table(simulated, exact):
+def print_comparison_table(simulated, exact, hand1, hand2):
     """
     Prints simulated %, exact %, and absolute error side by side.
     """
-    print(f"{'':<8}{'Simulated %':>13}{'Exact %':>11}{'Abs. error':>13}")
-    for label, simulated_percentage, exact_percentage in zip(["Hand 1", "Hand 2", "Ties"], simulated, exact):
+    labels = [f"Hand 1 ({format_hand(hand1)})", f"Hand 2 ({format_hand(hand2)})", "Ties"]
+    print(f"{'':<16}{'Simulated %':>13}{'Exact %':>11}{'Abs. error':>13}")
+    for label, simulated_percentage, exact_percentage in zip(labels, simulated, exact):
         error = abs(simulated_percentage - exact_percentage)
-        print(f"{label:<8}{simulated_percentage:>13.2f}{exact_percentage:>11.2f}{error:>13.2f}")
+        print(f"{label:<16}{simulated_percentage:>13.2f}{exact_percentage:>11.2f}{error:>13.2f}")
 
 
-def short_hand_name(hand):
+def format_card(card):
     """
-    Turns (("ACE", "SPADES"), ("KING", "SPADES")) into "A♠K♠" for plot titles.
+    Turns ("ACE", "SPADES") into "A♠". Ten is "T" so every card is two characters.
     """
-    rank_letters = {"ACE": "A", "KING": "K", "QUEEN": "Q", "JACK": "J"}
+    rank_letters = {"ACE": "A", "KING": "K", "QUEEN": "Q", "JACK": "J", "TEN": "T"}
     suit_symbols = {"SPADES": "♠", "HEARTS": "♥", "DIAMONDS": "♦", "CLUBS": "♣"}
 
-    name = ""
-    for rank, suit in hand:
-        name += rank_letters.get(rank, str(rank_values[rank])) + suit_symbols[suit]
-    return name
+    rank, suit = card
+    return rank_letters.get(rank, str(rank_values[rank])) + suit_symbols[suit]
+
+
+def format_hand(hand):
+    """
+    Turns a two-card hand into "A♠K♠" using format_card for each card.
+    """
+    return "".join(format_card(card) for card in hand)
 
 
 def plot_convergence(running_percentages, exact_hand1_percentage, hand1, hand2, show_plot):
@@ -340,7 +325,7 @@ def plot_convergence(running_percentages, exact_hand1_percentage, hand1, hand2, 
 
     plt.xlabel("Number of runs")
     plt.ylabel("Hand 1 win (%)")
-    plt.title(f"Monte Carlo Convergence: {short_hand_name(hand1)} vs {short_hand_name(hand2)}")
+    plt.title(f"Monte Carlo Convergence: {format_hand(hand1)} vs {format_hand(hand2)}")
     plt.legend()
     plt.grid(alpha=0.3)
     plt.tight_layout()
@@ -414,11 +399,11 @@ def main():
 
     hand1_percentage, hand2_percentage, ties_percentage = estimated_probability(hand1_wins, hand2_wins, ties, run_amount)
 
-    print("After running Hand 1:" + str(hand1) + "and Hand 2:" + str(hand2) + " through " + str(run_amount) + " random runouts,")
-    print("Hand 1 won " + str(hand1_wins) + " times")
-    print("Hand 2 won " + str(hand2_wins) + " times")
-    print("There were " + str(ties) + " ties")
-    print("Hand 1: " + str(hand1_percentage) + "% Hand 2: " + str(hand2_percentage) + "% Ties: " + str(ties_percentage) + "%")
+    print(f"After running Hand 1 ({format_hand(hand1)}) and Hand 2 ({format_hand(hand2)}) through {run_amount:,} random runouts,")
+    print(f"Hand 1 won {hand1_wins} times")
+    print(f"Hand 2 won {hand2_wins} times")
+    print(f"There were {ties} ties")
+    print(f"Hand 1: {hand1_percentage}% Hand 2: {hand2_percentage}% Ties: {ties_percentage}%")
     print(f"Simulation took {elapsed_seconds:.2f} seconds")
 
     exact = None  # stays None unless the user asks for exact odds
@@ -429,7 +414,7 @@ def main():
         exact_seconds = time.perf_counter() - start_time
         print(f"Exact calculation took {exact_seconds:.1f} seconds")
         print()
-        print_comparison_table((hand1_percentage, hand2_percentage, ties_percentage), exact)
+        print_comparison_table((hand1_percentage, hand2_percentage, ties_percentage), exact, hand1, hand2)
 
     exact_hand1_percentage = exact[0] if exact is not None else None
     show_plot = get_yes_no("Show the convergence plot? (y/n): ")

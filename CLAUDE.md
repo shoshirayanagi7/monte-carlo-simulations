@@ -10,7 +10,7 @@ Learning project: Monte Carlo simulations that compare simulated estimates with 
 - Keep the existing probability math (formulas, estimators, transition probabilities, payouts) unless the user asks to change it.
 - Explain every change in plain language, including the probability or Python concept behind it, because the user is learning.
 - Don't change the strategy logic in `interesting_problem_simulation.py`.
-- Save plots with `plt.savefig("images/<name>.png")` and `plt.close()`. Call `plt.show()` only behind a y/n prompt (like `card_simulation.py`), so piped runs never open a window.
+- Always save plots to `images/` with `plt.savefig("images/<name>.png")` and `plt.close()`. Only call `plt.show()` after asking y/n (see `get_yes_no()` in `card_simulation.py` / `dice_simulation.py`), so piped runs never open a window.
 
 ## Conventions
 
