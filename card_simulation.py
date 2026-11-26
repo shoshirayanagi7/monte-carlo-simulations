@@ -1,6 +1,9 @@
 import random
 import itertools
-import sys
+import time
+
+RED = "\033[31m"
+RESET = "\033[0m"
 
 suits = ["HEARTS", "DIAMONDS", "CLUBS", "SPADES"]
 ranks = ["ACE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "JACK", "QUEEN", "KING"]
@@ -404,36 +407,79 @@ def theoretical_probability(hand1, hand2):
     return theoretical_hand1_percentage, theoretical_hand2_percentage, theoretical_ties_percentage
 
 
+def get_int_input(prompt, min_value, max_value=None):
+    """
+    Keeps asking until the user types a whole number in the allowed range.
+    """
+    while True:
+        try:
+            value = int(input(prompt))
+        except ValueError:
+            print(f"{RED}Please enter a whole number.{RESET}")
+            continue
+
+        if value < min_value or (max_value is not None and value > max_value):
+            if max_value is None:
+                print(f"{RED}Please enter a number that is at least {min_value}.{RESET}")
+            else:
+                print(f"{RED}Please enter a number between {min_value} and {max_value}.{RESET}")
+            continue
+
+        return value
+
+
+def get_card(position, owner, chosen_cards):
+    """
+    Asks for one card's rank and suit, re-asking only the part that is invalid.
+    If the card was already chosen, asks for the whole card again.
+    """
+    while True:
+        while True:
+            rank = input(f"What is the rank of the {position} card of {owner} starting hand (Please enter in letters EX: ACE, TWO, KING):").strip().upper()
+            if rank in ranks:
+                break
+            print(f"{RED}Invalid rank. Please enter one of: {', '.join(ranks)}.{RESET}")
+
+        while True:
+            suit = input(f"What is the suit of the {position} card of {owner} starting hand (Please enter in plural form EX: DIAMONDS, SPADES):").strip().upper()
+            if suit in suits:
+                break
+            print(f"{RED}Invalid suit. Please enter one of: {', '.join(suits)}.{RESET}")
+
+        card = (rank, suit)
+        if card in chosen_cards:
+            print(f"{RED}That card has already been chosen. Please enter a different card.{RESET}")
+            continue
+
+        return card
+
+
+def get_hands():
+    """
+    Asks for both starting hands one card at a time.
+    """
+    chosen_cards = []
+    for owner in ["your", "your opponent's"]:
+        for position in ["first", "second"]:
+            chosen_cards.append(get_card(position, owner, chosen_cards))
+
+    hand1 = (chosen_cards[0], chosen_cards[1])
+    hand2 = (chosen_cards[2], chosen_cards[3])
+    return hand1, hand2
+
 
 def main():
     print("This is a poker probability calculator")
     print("Insert a 2 poker hands and this program will predict the chances of each hand winning")
 
-    hand1card1rank = input("What is the rank of the first card of your starting hand (Please enter in letters EX: ACE, TWO, KING):").strip().upper()
-    hand1card1suit = input("What is the suit of the first card of your starting hand (Please enter in plural form EX: DIAMONDS, SPADES):").strip().upper()
-    hand1card2rank = input("What is the rank of the second card of your starting hand (Please enter in letters EX: ACE, TWO, KING):").strip().upper()
-    hand1card2suit = input("What is the suit of the second card of your starting hand (Please enter in plural form EX: DIAMONDS, SPADES):").strip().upper()
-    hand2card1rank = input("What is the rank of the first card of your opponent's starting hand (Please enter in letters EX: ACE, TWO, KING):").strip().upper()
-    hand2card1suit = input("What is the suit of the first card of your opponent's starting hand (Please enter in plural form EX: DIAMONDS, SPADES):").strip().upper()
-    hand2card2rank = input("What is the rank of the second card of your opponent's starting hand (Please enter in letters EX: ACE, TWO, KING):").strip().upper()
-    hand2card2suit = input("What is the suit of the second card of your opponent's starting hand (Please enter in plural form EX: DIAMONDS, SPADES):").strip().upper()
+    hand1, hand2 = get_hands()
 
-    hand1_card1 = (hand1card1rank, hand1card1suit)
-    hand1_card2 = (hand1card2rank, hand1card2suit)
+    run_amount = get_int_input("How many times would you like to simulate?: ", 1)
 
-    hand2_card1 = (hand2card1rank, hand2card1suit)
-    hand2_card2 = (hand2card2rank, hand2card2suit)
-
-    hand1 = (hand1_card1, hand1_card2)
-    hand2 = (hand2_card1, hand2_card2)
-
-    if not validate_hand(hand1, hand2):
-        print("Invalid hand. Please run the program again and make sure conditions are met.")
-        sys.exit()
-
-    run_amount = int(input("How many times would you like to simulate?:"))
-
+    start_time = time.perf_counter()
     hand1_wins, hand2_wins, ties = monte_carlo(hand1, hand2, run_amount)
+    elapsed_seconds = time.perf_counter() - start_time
+
     hand1_percentage, hand2_percentage, ties_percentage = estimated_probability(hand1_wins, hand2_wins, ties, run_amount)
     # mathematical_hand1_percentage, mathematical_hand2_percentage, mathematical_ties_percentage = theoretical_probability(hand1, hand2)
 
@@ -442,6 +488,7 @@ def main():
     print("Hand 2 won " + str(hand2_wins) + " times")
     print("There were " + str(ties) + " ties")
     print("Hand 1: " + str(hand1_percentage) + "% Hand 2: " + str(hand2_percentage) + "% Ties: " + str(ties_percentage) + "%")
+    print(f"Simulation took {elapsed_seconds:.2f} seconds")
     # print(f"Mathematically, Hand 1 should win {mathematical_hand1_percentage}%")
     # print(f"Hand 2 should win {mathematical_hand2_percentage}%")
     # print(f"With {mathematical_ties_percentage}% ties")
