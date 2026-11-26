@@ -1,5 +1,6 @@
 import random
 import itertools
+import sys
 
 suits = ["HEARTS", "DIAMONDS", "CLUBS", "SPADES"]
 ranks = ["ACE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "JACK", "QUEEN", "KING"]
@@ -317,7 +318,7 @@ def best_hand(hand_combinations, hand_classifications):
 
     return best_hand
 
-def get_board_winner(board):
+def get_board_winner(hand1, hand2, board):
     hand1_combinations, hand2_combinations = make_hands(hand1, hand2, board)
     hand1_classifications = []
     for hand in hand1_combinations:
@@ -348,14 +349,14 @@ def get_board_winner(board):
         else:
             return "Tie"
 
-def run_once():
+def run_once(hand1, hand2):
     """
     Runs simulation one time
     """
     board = runout(hand1, hand2)
-    return get_board_winner(board)
+    return get_board_winner(hand1, hand2, board)
 
-def monte_carlo():
+def monte_carlo(hand1, hand2, run_amount):
     """
     Uses run_amount input to input many times and records wins for each hand
     """
@@ -364,7 +365,7 @@ def monte_carlo():
     ties = 0
     i = 1
     while i <= run_amount:
-        result = run_once()
+        result = run_once(hand1, hand2)
         if result == "Hand 1":
             hand1_wins+=1
         elif result == "Hand 2":
@@ -374,13 +375,13 @@ def monte_carlo():
         i += 1
     return hand1_wins, hand2_wins, ties
 
-def estimated_probability(hand1_wins, hand2_wins, ties):
+def estimated_probability(hand1_wins, hand2_wins, ties, run_amount):
     hand1_percentage = round((hand1_wins/run_amount)*100,2)
     hand2_percentage = round((hand2_wins/run_amount)*100,2)
     ties_percent = round((ties/run_amount)*100,2)
     return hand1_percentage, hand2_percentage, ties_percent 
 
-def theoretical_probability():
+def theoretical_probability(hand1, hand2):
     deck = remove_starting_hand(hand1, hand2)
 
     hand1_wins = 0
@@ -388,7 +389,7 @@ def theoretical_probability():
     ties = 0
 
     for board in itertools.combinations(deck, 5):
-        result = get_board_winner(board)
+        result = get_board_winner(hand1, hand2, board)
         if result == "Hand 1":
             hand1_wins += 1
         if result == "Hand 2":
@@ -396,56 +397,61 @@ def theoretical_probability():
         if result == "Tie":
             ties += 1
 
-    theoretical_hand1_percentage = hand1_wins/1712304
-    theoretical_hand2_percentage = hand2_wins/1712304
-    theoretical_ties_percentage = ties/1712304
+    theoretical_hand1_percentage = round((hand1_wins/1712304)*100,2)
+    theoretical_hand2_percentage = round((hand2_wins/1712304)*100,2)
+    theoretical_ties_percentage = round((ties/1712304)*100,2)
 
     return theoretical_hand1_percentage, theoretical_hand2_percentage, theoretical_ties_percentage
 
 
 
-print("This is a poker probability calculator")
-print("Insert a 2 poker hands and this program will predict the chances of each hand winning")
+def main():
+    print("This is a poker probability calculator")
+    print("Insert a 2 poker hands and this program will predict the chances of each hand winning")
 
-hand1card1rank = input("What is the rank of the first card of your starting hand (Please enter in letters EX: ACE, TWO, KING):").strip().upper()
-hand1card1suit = input("What is the suit of the first card of your starting hand (Please enter in plural form EX: DIAMONDS, SPADES):").strip().upper()
-hand1card2rank = input("What is the rank of the second card of your starting hand (Please enter in letters EX: ACE, TWO, KING):").strip().upper()
-hand1card2suit = input("What is the suit of the second card of your starting hand (Please enter in plural form EX: DIAMONDS, SPADES):").strip().upper()
-hand2card1rank = input("What is the rank of the first card of your opponent's starting hand (Please enter in letters EX: ACE, TWO, KING):").strip().upper()
-hand2card1suit = input("What is the suit of the first card of your opponent's starting hand (Please enter in plural form EX: DIAMONDS, SPADES):").strip().upper()
-hand2card2rank = input("What is the rank of the second card of your opponent's starting hand (Please enter in letters EX: ACE, TWO, KING):").strip().upper()
-hand2card2suit = input("What is the suit of the second card of your opponent's starting hand (Please enter in plural form EX: DIAMONDS, SPADES):").strip().upper()
+    hand1card1rank = input("What is the rank of the first card of your starting hand (Please enter in letters EX: ACE, TWO, KING):").strip().upper()
+    hand1card1suit = input("What is the suit of the first card of your starting hand (Please enter in plural form EX: DIAMONDS, SPADES):").strip().upper()
+    hand1card2rank = input("What is the rank of the second card of your starting hand (Please enter in letters EX: ACE, TWO, KING):").strip().upper()
+    hand1card2suit = input("What is the suit of the second card of your starting hand (Please enter in plural form EX: DIAMONDS, SPADES):").strip().upper()
+    hand2card1rank = input("What is the rank of the first card of your opponent's starting hand (Please enter in letters EX: ACE, TWO, KING):").strip().upper()
+    hand2card1suit = input("What is the suit of the first card of your opponent's starting hand (Please enter in plural form EX: DIAMONDS, SPADES):").strip().upper()
+    hand2card2rank = input("What is the rank of the second card of your opponent's starting hand (Please enter in letters EX: ACE, TWO, KING):").strip().upper()
+    hand2card2suit = input("What is the suit of the second card of your opponent's starting hand (Please enter in plural form EX: DIAMONDS, SPADES):").strip().upper()
 
-hand1_card1 = (hand1card1rank, hand1card1suit)
-hand1_card2 = (hand1card2rank, hand1card2suit)
+    hand1_card1 = (hand1card1rank, hand1card1suit)
+    hand1_card2 = (hand1card2rank, hand1card2suit)
 
-hand2_card1 = (hand2card1rank, hand2card1suit)
-hand2_card2 = (hand2card2rank, hand2card2suit)
+    hand2_card1 = (hand2card1rank, hand2card1suit)
+    hand2_card2 = (hand2card2rank, hand2card2suit)
 
-hand1 = (hand1_card1, hand1_card2)
-hand2 = (hand2_card1, hand2_card2)
+    hand1 = (hand1_card1, hand1_card2)
+    hand2 = (hand2_card1, hand2_card2)
 
-if not validate_hand(hand1, hand2):
-    print("Invalid hand. Please run the program again and make sure conditions are met.")
-    exit()
+    if not validate_hand(hand1, hand2):
+        print("Invalid hand. Please run the program again and make sure conditions are met.")
+        sys.exit()
 
-run_amount = int(input("How many times would you like to simulate?:"))
+    run_amount = int(input("How many times would you like to simulate?:"))
 
-hand1_wins, hand2_wins, ties = monte_carlo()
-hand1_percentage, hand2_percentage, ties_percentage = estimated_probability(hand1_wins, hand2_wins, ties)   
-# mathematical_hand1_percentage, mathematical_hand2_percentage, mathematical_ties_percentage = theoretical_probability()
+    hand1_wins, hand2_wins, ties = monte_carlo(hand1, hand2, run_amount)
+    hand1_percentage, hand2_percentage, ties_percentage = estimated_probability(hand1_wins, hand2_wins, ties, run_amount)
+    # mathematical_hand1_percentage, mathematical_hand2_percentage, mathematical_ties_percentage = theoretical_probability(hand1, hand2)
 
-print("After running Hand 1:" + str(hand1) + "and Hand 2:" + str(hand2) + " through " + str(run_amount) + " random runouts,")
-print("Hand 1 won " + str(hand1_wins) + " times")
-print("Hand 2 won " + str(hand2_wins) + " times")
-print("There were " + str(ties) + " ties")
-print("Hand 1: " + str(hand1_percentage) + "% Hand 2: " + str(hand2_percentage) + "% Ties: " + str(ties_percentage) + "%")
-# print("Mathematically, Hand 1 should win " + mathematical_hand1_percentage)
-# print("Hand 2 should win " + mathematical_hand2_percentage)
-# print("With " + mathematical_ties_percentage + "ties")
+    print("After running Hand 1:" + str(hand1) + "and Hand 2:" + str(hand2) + " through " + str(run_amount) + " random runouts,")
+    print("Hand 1 won " + str(hand1_wins) + " times")
+    print("Hand 2 won " + str(hand2_wins) + " times")
+    print("There were " + str(ties) + " ties")
+    print("Hand 1: " + str(hand1_percentage) + "% Hand 2: " + str(hand2_percentage) + "% Ties: " + str(ties_percentage) + "%")
+    # print(f"Mathematically, Hand 1 should win {mathematical_hand1_percentage}%")
+    # print(f"Hand 2 should win {mathematical_hand2_percentage}%")
+    # print(f"With {mathematical_ties_percentage}% ties")
 
-"""
-print estimated probability function
-print theoretical probability function
-print difference
-"""
+    """
+    print estimated probability function
+    print theoretical probability function
+    print difference
+    """
+
+
+if __name__ == "__main__":
+    main()
